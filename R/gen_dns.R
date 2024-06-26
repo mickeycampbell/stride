@@ -28,19 +28,22 @@
 
 #' @returns `SpatRaster` where each pixel represents an approximation of the
 #' vegetation density between `hgt_1` and `hgt_2`.
-#'
 #' @export
 
 gen_dns <- function(las_hgt, hgt_1 = 0.85, hgt_2 = 1.20, res = 10, ncores = 1L,
                      out_file = NULL, overwrite = F){
   options(lidR.raster.default = "terra")
-  lidR::opt_output_files(las_hgt) <- ""
+  if (class(las_hgt) == "LAScatalog"){
+    lidR::opt_output_files(las_hgt) <- ""
+  }
   if (ncores > 1){
     future::plan(future::multisession, workers = ncores)
   }
+  hgt_1 <<- hgt_1
+  hgt_2 <<- hgt_2
   dns <- lidR::pixel_metrics(
     las = las_hgt,
-    func = ~length(Z[Z >= hgt_1 & Z <= hgt_2]) / length(Z[Z <= hgt_2]),
+    func = ~stride::dns_fun(z = Z, hgt_1 = hgt_1, hgt_2 = hgt_2),
     res = 10
   )
   names(dns) <- "density"
