@@ -40,6 +40,7 @@ In addition to `stride`, we will employ the use of several other useful R librar
 library(stride)
 library(lidR)
 library(terra)
+library(knitr)
 ```
 
 ## Downloading lidar data
@@ -78,6 +79,7 @@ Next, we will generate our DTMs.
 ```{r}
 #| warning: false
 #| message: false
+#| eval: false
 
 # generate 1m DTM
 dtm_1m <- gen_dtm(
@@ -103,6 +105,19 @@ dtm_10m
 plot(dtm_10m)
 ```
 
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+
+# read in dtms
+dtm_1m <- rast("C:/temp/stride/lidar_data/dtm_1m.tif")
+dtm_10m <- rast("C:/temp/stride/lidar_data/dtm_10m.tif")
+
+# plot out the 10m DTM
+plot(dtm_10m)
+```
+
 ## Generating a ground surface roughness raster
 
 One of the three cost surfaces that STRIDE relies on to estimate travel impedance/conductance and enable the mapping of least-cost paths and accurate estimation of travel times is the roughness of the ground surface. In the context of STRIDE, roughness is calculated as the mean of absolute differences between a fine-scale (1 m) DTM and a "smoothed" version of that DTM, where the smoothing is the result of a circular mean focal filter. By default, the filter has a radius of 2 m. To generate this raster, we will use the `gen_rgh()` function.
@@ -110,6 +125,7 @@ One of the three cost surfaces that STRIDE relies on to estimate travel impedanc
 ```{r}
 #| warning: false
 #| message: false
+#| eval: false
 
 # generate a ground surface roughness raster
 rgh <- gen_rgh(
@@ -125,9 +141,21 @@ rgh
 plot(rgh)
 ```
 
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+
+# read in ground surface roughness raster
+rgh <- rast("C:/temp/stride/lidar_data/rgh.tif")
+
+# plot it out
+plot(rgh)
+```
+
 ## Generating a vegetation density raster
 
-Another of the three cost surfaces that STRIDE relies on is the density of vegetation within the range of human height. In Campbell et al. (*in review*), the height range that was most highly correlated with travel impedance was 0.85 - 1.20 m. For an average individual 1.70 m tall, this is approximately waist to chest height -- vegetation in this range is difficult to avoid, and thus a high density of it can slow you down considerably. Lidar data are excellent at quantifying and mapping vegetation structure. Because they are measured using narrow laser pulses that can exploit small gaps in a forest canopy, even in the presence of tall vegetation, the density of vegetation near the ground surface can be readily quantified. To capture vegetation density, we rely on a lidar poin cloud-derived metric referred to as the **normalized relative density (NRD)**:
+Another of the three cost surfaces that STRIDE relies on is the density of vegetation within the range of human height. In Campbell et al. (*in review*), the height range that was most highly correlated with travel impedance was 0.85 - 1.20 m. For an average individual 1.70 m tall, this is approximately waist to chest height -- vegetation in this range is difficult to avoid, and thus a high density of it can slow you down considerably. Lidar data are excellent at quantifying and mapping vegetation structure. Because they are measured using narrow laser pulses that can exploit small gaps in a forest canopy, even in the presence of tall vegetation, the density of vegetation near the ground surface can be readily quantified. To capture vegetation density, we rely on a lidar point cloud-derived metric referred to as the **normalized relative density (NRD)**:
 
 $$NRD=\frac{\sum_{i}^{j}n}{\sum_{0}^{j}n}$$
 
@@ -136,6 +164,10 @@ where $\sum_{i}^{j}n$ is the number ($n$) of lidar points between heights $i$ an
 To calculate NRD, however, requires that lidar points are **normalized to the ground surface**. By default, of course, lidar data *z* values are measured in elevation above mean sea level. Accordingly, we need to convert elevations to heights above the ground. This can be done using the `norm_hgt()` function.
 
 ```{r}
+#| warning: false
+#| message: false
+#| eval: false
+
 # normalize lidar point heights
 las_hgt <- norm_hgt(
   las = ctg,
@@ -145,9 +177,23 @@ las_hgt <- norm_hgt(
 las_hgt
 ```
 
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+
+# read in height-normalized lidar data
+las_hgt <- readLAScatalog("C:/temp/stride/lidar_data/hgt",
+                          filter = "-drop_withheld -drop_class 7 18")
+las_hgt
+```
+
 To make sure this worked, we can take a look at a random sample of *z* values from one of our height-normalized point clouds:
 
 ```{r}
+#| warning: false
+#| message: false
+
 # read in one of the height-normalized lidar tiles
 laz_files <- list.files("C:/temp/stride/lidar_data/hgt", full.names = T)
 test_file <- laz_files[1]
@@ -161,6 +207,10 @@ Looks about right! It's not uncommon to have some slightly negative values -- he
 With our height-normalized data, we can now calculate NRD. To do this, we can use the `gen_dns()` function. We will use the default values from Campbell et al. (*in review*) to capture the optimal height range from that study (0.85 - 1.20 m) and recommend that you do the same.
 
 ```{r}
+#| warning: false
+#| message: false
+#| eval: false
+
 # generate a vegetation density raster
 dns <- gen_dns(
   las_hgt = las_hgt,
@@ -172,6 +222,18 @@ dns <- gen_dns(
   overwrite = T
 )
 dns
+
+# plot it out
+plot(dns)
+```
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+
+# read in vegetation density raster
+dns <- rast("C:/temp/stride/lidar_data/dns.tif")
 
 # plot it out
 plot(dns)
@@ -203,6 +265,10 @@ Cliffs are generated directly from the 10 m DTM. Waterbodies can come from one o
 The barrier rasters will automatically be aligned with the cost rasters, so no additional congruency checks are needed.
 
 ```{r}
+#| warning: false
+#| message: false
+#| eval: false
+
 # get barrier raster data
 bars <- get_bars(
   dtm = dtm_10m,
@@ -220,6 +286,20 @@ plot(clf)
 plot(wtr)
 ```
 
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+
+# read in barrier rasters
+clf <- rast("C:/temp/stride/lidar_data/clf.tif")
+wtr <- rast("C:/temp/stride/lidar_data/wtr.tif")
+
+# plot them out
+plot(clf)
+plot(wtr)
+```
+
 Cells with a value of 0 are considered barriers in each of these datasets, since transition matrices rely on the concept of **conductance** -- the opposite of impedance. Therefore, areas with 0 conductance represent impassible features.
 
 ## Build transition matrix
@@ -227,6 +307,9 @@ Cells with a value of 0 are considered barriers in each of these datasets, since
 The STRIDE modeling workflow leans heavily on the `gdistance` package -- an excellent R package for modeling least-cost paths in an efficient and flexible way. `gdistance` relies on the creation of **transition matrices**, which are sparse matrix representations of conductance between neighboring cells in a raster dataset. The function `bld_tm()` builds a STRIDE transition matrix using the three cost rasters and two barrier rasters.
 
 ```{r}
+#| warning: false
+#| message: false
+
 # build a transition matrix
 tm <- bld_tm(
   dtm = dtm_10m,
@@ -243,6 +326,9 @@ tm
 With the transition matrix now built, we can now map the least cost path(s) between two (or more) points within the study area. In `stride`, this can be accomplished using the `map_lcp()` function. In the example below, we will simply generate two random points and map the least-cost path in both directions between them.
 
 ```{r}
+#| warning: false
+#| message: false
+
 # set random seed
 set.seed(1234)
 
@@ -275,40 +361,393 @@ lcp_2 <- map_lcp(
 # fix missing crs
 crs(lcp_1) <- crs(dtm_10m)
 crs(lcp_2) <- crs(dtm_10m)
+```
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
 
 # plot out the data
 plot(dtm_10m, main = "Elevation")
-plot(lcp_1, add = T, col = "red")
-plot(lcp_2, add = T, col = "blue")
+plot(lcp_1, add = T, col = 2, lwd = 1.5)
+plot(lcp_2, add = T, col = 4, lwd = 1.5)
 plot(pt_orig, add = T)
 plot(pt_dest, add = T)
+text(x = crds(pt_orig)[1,1], y = crds(pt_orig)[1,2],
+  labels = "1", pos = 4, offset = 0.5)
+text(x = crds(pt_dest)[1,1], y = crds(pt_dest)[1,2],
+  labels = "2", pos = 4, offset = 0.5)
+legend(
+  x = ext(dtm_10m)[1][[1]],
+  y = ext(dtm_10m)[4][[1]],
+  legend = c(expression(1 %->% 2), expression(2 %->% 1)),
+  lwd = 1.5, col = c(2, 4)
+)
 
 plot(dns, main = "Density")
-plot(lcp_1, add = T, col = "red")
-plot(lcp_2, add = T, col = "blue")
+plot(lcp_1, add = T, col = 2, lwd = 1.5)
+plot(lcp_2, add = T, col = 4, lwd = 1.5)
 plot(pt_orig, add = T)
 plot(pt_dest, add = T)
-
+text(x = crds(pt_orig)[1,1], y = crds(pt_orig)[1,2],
+  labels = "1", pos = 4, offset = 0.5)
+text(x = crds(pt_dest)[1,1], y = crds(pt_dest)[1,2],
+  labels = "2", pos = 4, offset = 0.5)
+legend(
+  x = ext(dtm_10m)[1][[1]],
+  y = ext(dtm_10m)[4][[1]],
+  legend = c(expression(1 %->% 2), expression(2 %->% 1)),
+  lwd = 1.5, col = c(2, 4)
+)
 plot(rgh, main = "Roughness")
-plot(lcp_1, add = T, col = "red")
-plot(lcp_2, add = T, col = "blue")
+plot(lcp_1, add = T, col = 2, lwd = 1.5)
+plot(lcp_2, add = T, col = 4, lwd = 1.5)
 plot(pt_orig, add = T)
 plot(pt_dest, add = T)
-
-# get total time
-print(paste0("Total travel time for LCP 1: ", round(lcp_1$time), " sec"))
-print(paste0("Total travel time for LCP 2: ", round(lcp_2$time), " sec"))
-
-# get total length
-print(paste0("Total travel time for LCP 1: ", round(perim(lcp_1)), " m"))
-print(paste0("Total travel time for LCP 2: ", round(perim(lcp_2)), " m"))
-
-# get average speed
-print(paste0("Average speed for LCP 1: ", 
-             round(perim(lcp_1)/lcp_1$time, 2), " m/s"))
-print(paste0("Average speed for LCP 2: ", 
-             round(perim(lcp_2)/lcp_2$time, 2), " m/s"))
-
+text(x = crds(pt_orig)[1,1], y = crds(pt_orig)[1,2],
+  labels = "1", pos = 4, offset = 0.5)
+text(x = crds(pt_dest)[1,1], y = crds(pt_dest)[1,2],
+  labels = "2", pos = 4, offset = 0.5)
+legend(
+  x = ext(dtm_10m)[1][[1]],
+  y = ext(dtm_10m)[4][[1]],
+  legend = c(expression(1 %->% 2), expression(2 %->% 1)),
+  lwd = 1.5, col = c(2, 4)
+)
 ```
 
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+
+# compile results
+results.df <- data.frame(
+  Path = c("1 -> 2", "2 -> 1"),
+  Time = c(lcp_1$time, lcp_2$time),
+  Length = c(perim(lcp_1), perim(lcp_2))
+)
+results.df$Speed <- results.df$Length / results.df$Time
+
+# print table
+kable(
+  x = results.df,
+  format = "html",
+  digits = c(NA, 0, 0, 2),
+  col.names = c("Path", "Time (sec)", "Length (m)", "Average Speed (m/s)")
+)
+```
+
+## Benchmarking
+
+Below, you will find the results of a series of benchmark tests that provide estimates of processing times for the various steps of the STRIDE modeling workflow. These tests were run on a Windows 10 Desktop PC with a 64-bit OS, Intel Core i9-10900 CPU with 10 cores, 20 virtual threads, and 96 GB of RAM. Four different study area sizes (1 lidar data tile = 1 km^2^, 2 tiles = 2 km^2^, 4 tiles = 4 km^2^, and 8 tiles = 8 km^2^) were run on four different numbers of cores (1, 2, 4, and 8), such that the number of cores never exceeded the number of tiles (i.e., it would not be beneficial to run 1 tile on 2 cores). The following results are broken out by study area size and core count.
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+#| eval: false
+
+# benchmark dir
+main_dir <- "C:/temp/stride/lidar_data/benchmark"
+
+# begin tile count loop
+ntiles <- c(1,2,4,8)
+for (ntile in ntiles){
+
+  # begin cores loop
+  ncores <- c(1,2,4,8)
+  for (ncore in ncores){
+    
+    # skip if number of cores exceeds number of tiles
+    if (ncore > ntile) next
+
+    #-----------step 1. reading in the data
+    t1 <- proc.time()
+    raw_dir <- file.path(main_dir, "raw")
+    files <- list.files(raw_dir, full.names = T)[1:ntile]
+    if (ntile == 1){
+      las <- readLAS(files, filter = "-drop_withheld -drop_class 7 18")
+    } else {
+      las <- readLAScatalog(files, filter = "-drop_withheld -drop_class 7 18")
+    }
+    t2 <- proc.time()
+    t_step1 <- t2 - t1
+
+    #-----------step 2. generating dtms
+    t1 <- proc.time()
+    dtm_1m <- gen_dtm(
+      las = las,
+      res = 1,
+      ncores = ncore,
+      out_file = "C:/temp/stride/lidar_data/benchmark/dtm_1m.tif",
+      overwrite = T
+    )
+    dtm_10m <- gen_dtm(
+      las = las,
+      res = 10,
+      ncores = ncore,
+      out_file = "C:/temp/stride/lidar_data/benchmark/dtm_10m.tif",
+      overwrite = T
+    )
+    t2 <- proc.time()
+    t_step2 <- t2 - t1
+
+    #-----------step 3. generating ground surface roughness raster
+    t1 <- proc.time()
+    rgh <- gen_rgh(
+      dtm = dtm_1m,
+      radius = 2,
+      res = 10,
+      out_file = "C:/temp/stride/lidar_data/benchmark/rgh.tif",
+      overwrite = T
+    )
+    t2 <- proc.time()
+    t_step3 <- t2 - t1
+
+    #-----------step 4. normalizing lidar point heights
+    t1 <- proc.time()
+    las_hgt <- norm_hgt(
+      las = las,
+      ncores = ncore,
+      out_path = "C:/temp/stride/lidar_data/benchmark/hgt"
+    )
+    t2 <- proc.time()
+    t_step4 <- t2 - t1
+
+    #-----------step 5. generating vegetation density raster
+    t1 <- proc.time()
+    dns <- gen_dns(
+      las_hgt = las_hgt,
+      hgt_1 = 0.85,
+      hgt_2 = 1.20,
+      res = 10,
+      ncores = ncore,
+      out_file = "C:/temp/stride/lidar_data/benchmark/dns.tif",
+      overwrite = T
+    )
+    t2 <- proc.time()
+    t_step5 <- t2 - t1
+
+    #-----------step 6. checking raster alignment
+    t1 <- proc.time()
+    r <- algn_rasts(
+      dtm = dtm_10m,
+      dns = dns,
+      rgh = rgh,
+      force = T
+    )
+    t2 <- proc.time()
+    t_step6 <- t2 - t1
+
+    #-----------step 7. get barrier rasters
+    t1 <- proc.time()
+    bars <- get_bars(
+      dtm = dtm_10m,
+      out_file_clf = "C:/temp/stride/lidar_data/benchmark/clf.tif",
+      out_file_wtr = "C:/temp/stride/lidar_data/benchmark/wtr.tif",
+      overwrite = T
+    )
+    clf <- bars$clf
+    clf
+    wtr <- bars$wtr
+    wtr
+    t2 <- proc.time()
+    t_step7 <- t2 - t1
+
+    #-----------step 8. build tm
+    t1 <- proc.time()
+    tm <- bld_tm(
+      dtm = dtm_10m,
+      dns = dns,
+      rgh = rgh,
+      clf = clf,
+      wtr = wtr
+    )
+    t2 <- proc.time()
+    t_step8 <- t2 - t1
+
+    #-----------step 9. map lcp
+    for (i in 1:1000){
+      test <- try({
+        t1 <- proc.time()
+        pt_orig <- spatSample(
+          x = dtm_10m,
+          size = 1,
+          as.points = T,
+          values = F
+        )
+        pt_dest <- spatSample(
+          x = dtm_10m,
+          size = 1,
+          as.points = T,
+          values = F
+        )
+        lcp_1 <- map_lcp(
+          tm = tm,
+          pt_orig = pt_orig,
+          pt_dest = pt_dest
+        )
+        lcp_2 <- map_lcp(
+          tm = tm,
+          pt_orig = pt_dest,
+          pt_dest = pt_orig
+        )
+        crs(lcp_1) <- crs(dtm_10m)
+        crs(lcp_2) <- crs(dtm_10m)
+        t2 <- proc.time()
+        t_step9 <- t2 - t1
+      })
+      if (class(test) != "try-error"){
+        break
+      }
+    }
+
+    # compile results
+    if (ntile == 1 & ncore == 1){
+      benchmark_df <- data.frame(
+        ntile = ntile,
+        ncore = ncore,
+        t_step1 = t_step1[3][[1]],
+        t_step2 = t_step2[3][[1]],
+        t_step3 = t_step3[3][[1]],
+        t_step4 = t_step4[3][[1]],
+        t_step5 = t_step5[3][[1]],
+        t_step6 = t_step6[3][[1]],
+        t_step7 = t_step7[3][[1]],
+        t_step8 = t_step8[3][[1]],
+        t_step9 = t_step9[3][[1]]
+      )
+    } else {
+      benchmark_df <- rbind(
+        benchmark_df, data.frame(
+          ntile = ntile,
+          ncore = ncore,
+          t_step1 = t_step1[3][[1]],
+          t_step2 = t_step2[3][[1]],
+          t_step3 = t_step3[3][[1]],
+          t_step4 = t_step4[3][[1]],
+          t_step5 = t_step5[3][[1]],
+          t_step6 = t_step6[3][[1]],
+          t_step7 = t_step7[3][[1]],
+          t_step8 = t_step8[3][[1]],
+          t_step9 = t_step9[3][[1]]
+        )
+      )
+    }
+
+  }
+
+}
+
+# convert to minutes
+benchmark_df[,3:11] <- benchmark_df[,3:11] / 60
+
+# add sum column
+benchmark_df$t_all <- rowSums(benchmark_df[,3:11])
+
+# write to file
+write.csv(benchmark_df, "C:/temp/stride/lidar_data/benchmark/benchmark_results.csv", row.names = F)
+```
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+#| fig-height: 8
+
+# read in the csv
+benchmark_df <- read.csv("C:/temp/stride/lidar_data/benchmark/benchmark_results.csv")
+
+# add colors and sizes
+library(viridis)
+cols <- inferno(5)
+benchmark_df$col[benchmark_df$ncore == 1] <- cols[1]
+benchmark_df$col[benchmark_df$ncore == 2] <- cols[2]
+benchmark_df$col[benchmark_df$ncore == 4] <- cols[3]
+benchmark_df$col[benchmark_df$ncore == 8] <- cols[4]
+
+benchmark_df$cex <- NA
+benchmark_df$cex[benchmark_df$ntile == 1] <- 0.75
+benchmark_df$cex[benchmark_df$ntile == 2] <- 1.5
+benchmark_df$cex[benchmark_df$ntile == 4] <- 2.25
+benchmark_df$cex[benchmark_df$ntile == 8] <- 3
+
+# get names
+step_names <- c(
+  "1. Reading Lidar Data",
+  "2. Generating DTMs",
+  "3. Generating Roughness",
+  "4. Normalizing Heights",
+  "5. Generating Density",
+  "6. Checking Alignment",
+  "7. Getting Barriers",
+  "8. Building Trans Matrix",
+  "9. Mapping to/from LCPs",
+  "10. Total Time"
+)
+
+# create empty plot
+par(mar = c(5,1,5,1))
+tmax <- max(benchmark_df[,3:12])
+dotchart(
+  x = rep(1e6, 10),
+  labels = step_names,
+  xlim = c(0, tmax),
+  xlab = "Processing Time (min)"
+)
+
+# plot it out
+for (i in 1:nrow(benchmark_df)){
+  plot_data <- benchmark_df[i,3:12] |> as.numeric()
+  names(plot_data) <- step_names
+  cex <- benchmark_df$cex[i]
+  col <- benchmark_df$col[i]
+  points(
+    x = plot_data,
+    y = seq(1,10),
+    cex = cex,
+    col = col,
+    lwd = 2
+  )
+}
+
+# add legend for study area size
+legend(
+  x = mean(par("usr")[1:2]),
+  y = par("usr")[4] + 0.04 * diff(par("usr")[3:4]),
+  legend = c(expression(1*km^2),
+             expression(2*km^2),
+             expression(4*km^2),
+             expression(8*km^2)),
+  pch = 1,
+  pt.cex = c(0.75, 1.5, 2.25, 3),
+  xjust = 0.5,
+  yjust = 0,
+  horiz = T,
+  xpd = T,
+  x.intersp = 2,
+  text.width = diff(par("usr")[1:2]) / 6,
+  bty = "n"
+)
+
+# add legend for study area size
+legend(
+  x = mean(par("usr")[1:2]),
+  y = par("usr")[4] + 0.00 * diff(par("usr")[3:4]),
+  legend = c("1 core", "2 cores", "4 cores", "8 cores"),
+  col = cols,
+  pch = 1,
+  xjust = 0.5,
+  yjust = 0,
+  horiz = T,
+  xpd = T,
+  x.intersp = 2,
+  text.width = diff(par("usr")[1:2]) / 6,
+  bty = "n",
+  pt.lwd = 2
+)
+
+```
 
